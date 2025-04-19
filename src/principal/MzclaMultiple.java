@@ -242,3 +242,5 @@ static void escribir(File f)
  
 }
 }
+
+
