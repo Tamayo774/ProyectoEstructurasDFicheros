@@ -1,246 +1,218 @@
 package principal;
-
 import java.io.*;
-
-class MzclaMultiple {
+import java.util.*;
+public class MzclaMultiple {
 	
-static final int N = 6;
-static final int N2 = N/2;
-static File f0;
-static File []f = new File[N];
-static final int NumReg = 149;
-static final int TOPE = 999;
 
-public static void main(String []a) {
-	
-	
- String[] nomf = {"ar1", "ar2", "ar3", "ar4", "ar5", "ar6"};
- 
- f0 = new File("ArchivoOrigen");
- 
- for (int i = 0; i < N; i++)
-	 
-  f[i] = new File(nomf[i]);
- 
- DataOutputStream flujo = null;
- 
- // se genera un archivo secuencialmente de claves enteras
- try {
-   flujo = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(f0)));
-   
-  for (int i = 1; i <= NumReg; i++)
-	  flujo.writeInt((int)(1+TOPE*Math.random()));
-  	flujo.close();
-  	System.out.print("Archivo original ...  ");
-  	escribir(f0);
-  	mezclaEqMple();    
- }
- catch (IOException e)
- {
-	 System.out.println("Error entrada/salida durante proceso" + " de ordenación ");
-	 e.printStackTrace();
- }
-}
-//método de ordenación
+	    static final int N = 6;
+	    static final int N2 = N / 2;
+	    static final int NumReg = 1999999999;
+	    static final int TOPE = 999999999;
+	    static File f0;
+	    static File[] f = new File[N];
+	    static int ultimoNumTramos;
+	    
+	    // Writer para volcar salida en fichero
+	    static BufferedWriter out;
 
-public static void mezclaEqMple() {
-  int i, j, k, k1, t;
-  int anterior;
-  int [] c = new int[N];
-  int [] cd = new int[N];
-  int [] r = new int[N2];
- 
-  Object [] flujos = new Object[N];
-  DataInputStream flujoEntradaActual = null;
-  DataOutputStream flujoSalidaActual = null;
-  boolean [] actvs = new boolean[N2];
- // distribución inicial de tramos desde archivo origen 
-  try {
-    t = distribuir();
-    for (i = 0; i < N; i++)
-      c[i] = i;
-  // bucle hasta número de tramos == 1: archivo ordenado
-    do {
-       k1 = (t < N2) ? t : N2;
-       for (i = 0; i < k1; i++)
-       {
-    	   flujos[c[i]] = new DataInputStream(
-		   new BufferedInputStream(new FileInputStream(f[c[i]])));
-    	   cd[i] = c[i];
-       }
-       j = N2 ; // índice de archivo de salida
-       t = 0;
-       for (i = j; i < N; i++)
-    	  flujos[c[i]] = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(f[c[i]])));
-   // entrada de una clave de cada flujo
-       for (int n = 0; n < k1; n++)
-   {
-    	  flujoEntradaActual = (DataInputStream)flujos[cd[n]];
-    	  r[n] = flujoEntradaActual.readInt();   
-   	   }
-   
-       while (k1 > 0)
-       {
-    	 t++; // mezcla de otro tramo 
-    	 for (i = 0; i < k1; i++)  
-    		actvs[i] = true;
-    	 flujoSalidaActual = (DataOutputStream)flujos[c[j]];
-    	 while (!finDeTramos(actvs, k1))
-    	 {
-    	    int n;
-    	    n = minimo(r, actvs, k1);
-    	    flujoEntradaActual = (DataInputStream)flujos[cd[n]];
-    	    flujoSalidaActual.writeInt(r[n]);
-    	    anterior = r[n];
-    	    try { 
-    	       r[n] = flujoEntradaActual.readInt(); 
-    	       if (anterior > r[n]) // fin de tramo
-    	    	  actvs[n] = false;
-    	    }
-    	    catch (EOFException eof)
-    	    {
-    	    	k1--;
-    	    	flujoEntradaActual.close(); 
-    	    	cd[n] = cd[k1];
-    	    	r[n] = r[k1];
-    	    	actvs[n] = actvs[k1];
-    	    	actvs[k1] = false;// no se accede a posición k1  
-    	    }
-    }
-    
-    	 j = (j < N-1) ? j+1 : N2; // siguiente flujo de salida
-   }
-       	 for (i = N2; i < N; i++)
-   {
-       		 flujoSalidaActual = (DataOutputStream)flujos[c[i]];
-       		 flujoSalidaActual.close();
-   }
-   /*
-    Cambio de finalidad de los flujos: entrada<->salida
-   */
-   for (i = 0; i < N2; i++)
-   {
-    int a;
-    a       = c[i];
-    c[i]    = c[i+N2];
-    c[i+N2]  = a;
-   }
-  } while (t > 1);
-  System.out.print("Archivo ordenado ...  ");
-  escribir(f[c[0]]);
- } 
- catch (IOException er)
- {
-  er.printStackTrace();
- }
-}
-//distribuye tramos de flujos de entrada en flujos de salida
-private static int distribuir() throws IOException
-{
- int anterior, j, nt;
- int clave;
- DataInputStream flujo = new DataInputStream(
-     new BufferedInputStream(new FileInputStream(f0)));
- DataOutputStream [] flujoSalida = new DataOutputStream[N2];
- for (j = 0; j < N2; j++)
- {
-  flujoSalida[j] = new DataOutputStream(
-  new BufferedOutputStream(new FileOutputStream(f[j])));
- }
- anterior = -TOPE;
- clave = anterior + 1;
- j = 0;   // indice del flujo de salida 
- nt = 0;
- // bucle termina con la excepción fin de fichero 
- try {
-  while (true)
-  {
-   clave = flujo.readInt();
-   while (anterior <= clave)
-   {
-    flujoSalida[j].writeInt(clave);
-    anterior = clave;
-    clave = flujo.readInt();
-   }
-   
-   nt++;         // nuevo tramo 
-   j = (j < N2-1) ? j+1 : 0; // siguiente archivo 
-   flujoSalida[j].writeInt(clave);
-   anterior = clave;
-  }
- }
- catch (EOFException eof)
- {
-  nt++;  // cuenta ultimo tramo
-  System.out.println("\n*** Número de tramos: " + nt + " ***");
-  flujo.close();
-  for (j = 0; j < N2; j++)
-   flujoSalida[j].close();
-  return nt;
- }
-}
-//devuelve el índice del menor valor del array de claves
-private static int minimo(int [] r, boolean [] activo, int n)
-{
- int i, indice;
- int m;
- i = indice = 0;
- m = TOPE+1;
- for ( ; i < n; i++)
- {
-  if (activo[i] && r[i] < m)
-  {
-   m = r[i];
-   indice = i;
-  }
- }
- return indice;
-}
-//devuelve true si no hay tramo activo
-private static boolean finDeTramos(boolean [] activo, int n)
-{
- boolean s = true;
- 
- for(int k = 0; k < n; k++)
- {
-  if (activo[k])  s = false;
- }
- return s;
-}
-//escribe las claves del archivo
-static void escribir(File f)
-{
- int clave, k;
- boolean mas = true;
- DataInputStream flujo = null;
- try {
-  flujo = new DataInputStream(
-     new BufferedInputStream(new FileInputStream(f)));
-  k = 0;
-  while (mas)
-  {
-   k++;
-   System.out.print(flujo.readInt() + " ");
-   
-   if (k % 19 == 0) System.out.println();
-  }
- }
- catch (IOException eof)
- {
-  System.out.println("\n *** Fin del archivo ***\n");
-  try 
-  {
-   if (eof instanceof EOFException)
-    flujo.close();    
-  } 
-  catch (IOException er)
-  {
-   er.printStackTrace();
-  }
-   
- }
- 
-}
-}
+	    public static void main(String[] args) {
+	        String basePath = "C:\\Users\\tamay\\Desktop\\";
+	        String origenName = basePath + "ArchivoOrigen.dat";
+	        String outputName = basePath + "FicheroOrdenado.txt";
+
+	        try {
+	            // Inicializar writer de salida
+	            out = new BufferedWriter(new FileWriter(outputName));
+
+	            // Generar ArchivoOrigen con datos aleatorios (4GB, etc.)
+	            try (DataOutputStream flujo = new DataOutputStream(
+	                    new BufferedOutputStream(new FileOutputStream(origenName), 64 * 1024))) {
+	                for (int i = 1; i <= NumReg; i++) {
+	                    flujo.writeInt(1 + (int)(TOPE * Math.random()));
+	                }
+	            }
+
+	            // Archivos temporales de mezcla
+	            String[] nomf = {"ar1.dat", "ar2.dat", "ar3.dat", "ar4.dat", "ar5.dat", "ar6.dat"};
+	            f0 = new File(origenName);
+	            for (int i = 0; i < N; i++) {
+	                f[i] = new File(basePath + nomf[i]);
+	            }
+
+	            // 1. Escribir datos desordenados
+	            escribir(f0);
+
+	            // Marcas y número de tramos
+	            out.newLine();
+	            out.write("***Fin del archivo***");
+	            out.newLine();
+	            out.newLine();
+	            out.write("***Número de tramos: " + distribuir() + "***");
+	            out.newLine();
+	            out.write("***Archivo Ordenado***");
+	            out.newLine();
+
+	            // 2. Mezcla y obtención del fichero ordenado
+	            File sorted = mezclaEqMple();
+
+	            // 3. Escribir datos ordenados
+	            escribir(sorted);
+
+	            // Cerrar writer
+	            out.close();
+	            System.out.println("¡Salida escrita en: " + outputName);
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
+
+	    /**
+	     * Distribuye runs desde f0 hacia los N2 primeros ficheros.
+	     * @return número total de runs
+	     */
+	    private static int distribuir() throws IOException {
+	        DataInputStream flujo = new DataInputStream(
+	            new BufferedInputStream(new FileInputStream(f0), 64 * 1024));
+	        DataOutputStream[] flujoSalida = new DataOutputStream[N2];
+	        for (int j = 0; j < N2; j++) {
+	            flujoSalida[j] = new DataOutputStream(
+	                new BufferedOutputStream(new FileOutputStream(f[j]), 64 * 1024));
+	        }
+	        int anterior = -TOPE;
+	        int clave;
+	        int j = 0;
+	        int nt = 0;
+	        try {
+	            while (true) {
+	                clave = flujo.readInt();
+	                while (anterior <= clave) {
+	                    flujoSalida[j].writeInt(clave);
+	                    anterior = clave;
+	                    clave = flujo.readInt();
+	                }
+	                nt++;
+	                j = (j < N2 - 1) ? j + 1 : 0;
+	                flujoSalida[j].writeInt(clave);
+	                anterior = clave;
+	            }
+	        } catch (EOFException eof) {
+	            nt++;
+	            flujo.close();
+	            for (DataOutputStream ds : flujoSalida) ds.close();
+	            ultimoNumTramos = nt;
+	            return nt;
+	        }
+	    }
+
+	    /**
+	     * Realiza la mezcla equilibrada múltiple y devuelve el fichero final ordenado.
+	     */
+	    public static File mezclaEqMple() throws IOException {
+	        int t = ultimoNumTramos;
+	        int[] c = new int[N];
+	        int[] cd = new int[N];
+	        int[] r = new int[N2];
+	        Object[] flujos = new Object[N];
+	        boolean[] actvs = new boolean[N2];
+
+	        // Inicializar índices
+	        for (int i = 0; i < N; i++) c[i] = i;
+
+	        do {
+	            int k1 = (t < N2) ? t : N2;
+	            // Abrir k1 ficheros de entrada
+	            for (int i = 0; i < k1; i++) {
+	                flujos[c[i]] = new DataInputStream(
+	                    new BufferedInputStream(new FileInputStream(f[c[i]]), 64 * 1024));
+	                cd[i] = c[i];
+	            }
+	            int j = N2;
+	            t = 0;
+	            // Abrir los ficheros de salida
+	            for (int i = N2; i < N; i++) {
+	                flujos[c[i]] = new DataOutputStream(
+	                    new BufferedOutputStream(new FileOutputStream(f[c[i]]), 64 * 1024));
+	            }
+	            // Leer primer elemento de cada run
+	            for (int n = 0; n < k1; n++) {
+	                r[n] = ((DataInputStream) flujos[cd[n]]).readInt();
+	            }
+	            // Mezcla de runs
+	            while (k1 > 0) {
+	                t++;
+	                Arrays.fill(actvs, 0, k1, true);
+	                DataOutputStream flujoSalida = (DataOutputStream) flujos[c[j]];
+	                while (!finDeTramos(actvs, k1)) {
+	                    int n = minimo(r, actvs, k1);
+	                    DataInputStream flujoEntrada = (DataInputStream) flujos[cd[n]];
+	                    flujoSalida.writeInt(r[n]);
+	                    int anterior = r[n];
+	                    try {
+	                        r[n] = flujoEntrada.readInt();
+	                        if (anterior > r[n]) actvs[n] = false;
+	                    } catch (EOFException eof) {
+	                        k1--;
+	                        flujoEntrada.close();
+	                        cd[n] = cd[k1];
+	                        r[n] = r[k1];
+	                        actvs[n] = actvs[k1];
+	                        actvs[k1] = false;
+	                    }
+	                }
+	                j = (j < N - 1) ? j + 1 : N2;
+	            }
+	            // Cerrar flujos de salida
+	            for (int i = N2; i < N; i++) {
+	                ((DataOutputStream) flujos[c[i]]).close();
+	            }
+	            // Rotar roles
+	            for (int i = 0; i < N2; i++) {
+	                int temp = c[i];
+	                c[i] = c[i + N2];
+	                c[i + N2] = temp;
+	            }
+	        } while (t > 1);
+
+	        // El fichero ordenado final está en f[c[0]]
+	        return f[c[0]];
+	    }
+
+	    private static int minimo(int[] r, boolean[] activo, int n) {
+	        int m = TOPE + 1, indice = 0;
+	        for (int i = 0; i < n; i++) {
+	            if (activo[i] && r[i] < m) {
+	                m = r[i];
+	                indice = i;
+	            }
+	        }
+	        return indice;
+	    }
+
+	    private static boolean finDeTramos(boolean[] activo, int n) {
+	        for (int i = 0; i < n; i++) {
+	            if (activo[i]) return false;
+	        }
+	        return true;
+	    }
+
+	    /**
+	     * Escribe el contenido de un fichero de enteros en el writer `out`.
+	     */
+	    static void escribir(File file) {
+	        try (DataInputStream flujo = new DataInputStream(
+	                new BufferedInputStream(new FileInputStream(file), 64 * 1024))) {
+	            int k = 0;
+	            while (true) {
+	                int val = flujo.readInt();
+	                out.write(val + ((k % 19 == 18) ? "\n" : " "));
+	                k++;
+	            }
+	        } catch (EOFException eof) {
+	            // Fin de archivo
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
 
 
